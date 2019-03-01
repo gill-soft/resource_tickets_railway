@@ -91,17 +91,18 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 				try {
 					// получаем каждый поезд по отдельности со стоимостью и вагонами
 					if (!searchPackage.getSearchResult().containsKey(train.getNumber())) {
+						
+						// запускаем формаирование маршрута
+						try {
+							client.getCachedRoute(train.getDepartureCode(), train.getArrivalCode(), train.getDeparture(), train.getNumber());
+						} catch (Exception e) {
+						}
 						Train details = client.getCachedTrain(response.getSession().getId(), train.getNumber());
 						searchPackage.getSearchResult().put(details.getNumber(), details);
 					}
 				} catch (IOCacheException e) {
 					searchPackage.setInProgress(true);
 				} catch (ResponseError e) {
-				}
-				// запускаем формаирование маршрута
-				try {
-					client.getCachedRoute(train.getDepartureCode(), train.getArrivalCode(), train.getDeparture(), train.getNumber());
-				} catch (Exception e) {
 				}
 			}
 		} catch (IOCacheException e) {
@@ -148,9 +149,12 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 					
 					// классы вагонов обьединяем в отдельные рейсы
 					for (CarClass clas : train.getClasses()) {
-						Trip resTrip = new Trip();
-						resTrip.setId(addSegment(vehicles, localities, organisations, segments, train, clas, result.getRequest()));
-						trips.add(resTrip);
+						String segmentId = addSegment(vehicles, localities, organisations, segments, train, clas, result.getRequest().getCurrency());
+						if (segmentId != null) {
+							Trip resTrip = new Trip();
+							resTrip.setId(segmentId);
+							trips.add(resTrip);
+						}
 					}
 					train.setAdded(true);
 				}
@@ -163,9 +167,9 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 		containers.add(container);
 	}
 	
-	private String addSegment(Map<String, Vehicle> vehicles, Map<String, Locality> localities,
+	public String addSegment(Map<String, Vehicle> vehicles, Map<String, Locality> localities,
 			Map<String, Organisation> organisations, Map<String, Segment> segments, Train train, CarClass clas,
-			TripSearchRequest request) {
+			Currency currency) {
 		Segment segment = new Segment();
 		segment.setNumber(train.getNumber());
 		segment.setDepartureDate(train.getDeparture());
@@ -178,33 +182,43 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 		segment.setCarrier(addOrganisation(organisations, train.getProviderName()));
 		segment.setVehicle(addVehicle(vehicles, train.getNumber()));
 		
-		segment.setPrice(createPrice(clas, request.getCurrency()));
+		segment.setPrice(createPrice(clas, currency));
 		
 		TripIdModel id = new TripIdModel(clas.getCars().get(0).getId(), clas.getName(), clas.getSubclass(), clas.getType(),
 				train.getNumber(), train.getPassengerDepartureCode(), train.getPassengerArrivalCode(), train.getDeparture());
-		String key = id.asString();
-		segments.put(key, segment);
 		
 		segment.setCarriages(new ArrayList<>(clas.getCars().size()));
 		for (Car car : clas.getCars()) {
-			Carriage carriage = new Carriage();
-			id.setCarId(car.getId());
-			carriage.setId(id.asString());
-			carriage.setNumber(car.getNumber());
-			carriage.setClas(getCarClass(clas.getName(), clas.getSubclass()));
-			carriage.setFreeLowerPlaces(car.getSeats().getLower());
-			carriage.setFreeLowerSidePlaces(car.getSeats().getSideLower());
-			carriage.setFreeTopPlaces(car.getSeats().getUpper());
-			carriage.setFreeTopSidePlaces(car.getSeats().getSideUpper());
-			segment.getCarriages().add(carriage);
+			
+			// продавать можно только 2 и 3
+			if (car.getOperationTypes().contains("2")
+					|| car.getOperationTypes().contains("3")) {
+				Carriage carriage = new Carriage();
+				id.setCarId(car.getId());
+				carriage.setId(id.asString());
+				carriage.setNumber(car.getNumber());
+				carriage.setClas(getCarClass(clas.getName(), clas.getSubclass()));
+				carriage.setFreeLowerPlaces(car.getSeats().getLower());
+				carriage.setFreeLowerSidePlaces(car.getSeats().getSideLower());
+				carriage.setFreeTopPlaces(car.getSeats().getUpper());
+				carriage.setFreeTopSidePlaces(car.getSeats().getSideUpper());
+				segment.getCarriages().add(carriage);
+			}
 		}
-		// получаем маршрут
-		try {
-			TrainRoute route = client.getCachedRoute(train.getDepartureCode(), train.getArrivalCode(), train.getDeparture(), train.getNumber());
-			segment.setRoute(createRoute(route, localities));
-		} catch (Exception e) {
+		if (!segment.getCarriages().isEmpty()) {
+			id.setCarId(clas.getCars().get(0).getId());
+			String key = id.asString();
+			segments.put(key, segment);
+			
+			// получаем маршрут
+			try {
+				TrainRoute route = client.getCachedRoute(train.getDepartureCode(), train.getArrivalCode(), train.getDeparture(), train.getNumber());
+				segment.setRoute(createRoute(route, localities));
+			} catch (Exception e) {
+			}
+			return key;
 		}
-		return key;
+		return null;
 	}
 	
 	private CarriageClass getCarClass(String className, String subClass) {
@@ -373,8 +387,12 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 
 	@Override
 	public List<RequiredField> getRequiredFieldsResponse(String tripId) {
-		// TODO Auto-generated method stub
-		return null;
+		List<RequiredField> required = new ArrayList<>(4);
+		required.add(RequiredField.NAME);
+		required.add(RequiredField.SURNAME);
+		required.add(RequiredField.PHONE);
+		required.add(RequiredField.EMAIL);
+		return required;
 	}
 
 	@Override

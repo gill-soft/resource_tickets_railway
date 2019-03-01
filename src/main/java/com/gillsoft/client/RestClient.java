@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
@@ -33,7 +34,9 @@ import com.gillsoft.cache.CacheHandler;
 import com.gillsoft.cache.IOCacheException;
 import com.gillsoft.cache.RedisMemoryCache;
 import com.gillsoft.logging.SimpleRequestResponseLoggingInterceptor;
+import com.gillsoft.model.Customer;
 import com.gillsoft.model.ResponseError;
+import com.gillsoft.model.Seat;
 import com.gillsoft.util.RestTemplateUtil;
 
 @Component
@@ -60,6 +63,9 @@ public class RestClient {
 	private static final String TRAIN = "train.json";
 	private static final String CAR = "car.json";
 	private static final String ROUTE = "timetable/train_route.json";
+	private static final String RESERVATION = "reservation.json";
+	private static final String BOOKING = "booking_show.json";
+	private static final String CANCEL = "cancel.json";
 
 	@Autowired
     @Qualifier("RedisMemoryCache")
@@ -198,6 +204,50 @@ public class RestClient {
 		params.add("date", dateFormat.format(date));
 		params.add("train_number", trainNumber);
 		return getResult(searchTemplate, ROUTE, params).getRoute();
+	}
+	
+	public Response reservation(String sessionId, String operationType, List<Customer> customers, List<Seat> seats) throws ResponseError {
+		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+		params.add("key", Config.getKey());
+		params.add("lang", LANG_RU);
+		params.add("session_id", sessionId);
+		List<String> passengers = new ArrayList<>(customers.size());
+		for (Customer customer : customers) {
+			passengers.add(String.join(":", customer.getName(), customer.getSurname(), "", ""));
+		}
+		params.add("passengers", String.join("|", passengers));
+		params.add("auth_key", Config.getAuthKey());
+		params.add("no_clothes", "1");
+		params.add("operation_type", operationType);
+		params.add("range", String.join(",", seats.stream().map(Seat::getId).collect(Collectors.toList())));
+		return getResult(template, RESERVATION, params);
+	}
+	
+	public Train getBooking(String reservationId) throws ResponseError {
+		return bookingOperation(reservationId, BOOKING);
+	}
+	
+	public Train cancelBooking(String reservationId) throws ResponseError {
+		return bookingOperation(reservationId, CANCEL);
+	}
+	
+	public Train bookingOperation(String reservationId, String method) throws ResponseError {
+		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+		params.add("key", Config.getKey());
+		params.add("lang", LANG_RU);
+		params.add("auth_key", Config.getAuthKey());
+		params.add("reservation_id", reservationId);
+		return getResult(template, method, params).getBooking();
+	}
+	
+	public Response refundOperation(String reservationId, String passengerId, String method) throws ResponseError {
+		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+		params.add("key", Config.getKey());
+		params.add("lang", LANG_RU);
+		params.add("auth_key", Config.getAuthKey());
+		params.add("reservation_id", reservationId);
+		params.add("passenger_id", passengerId);
+		return getResult(template, method, params);
 	}
 	
 	private Response getResult(RestTemplate template, String method, MultiValueMap<String, String> params) throws ResponseError {

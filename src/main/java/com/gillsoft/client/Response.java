@@ -23,6 +23,12 @@ public class Response implements Serializable {
 	
 	@JsonProperty("train_route")
 	private TrainRoute route;
+	
+	private Reservation reservation;
+	
+	private Card card;
+	
+	private Train booking;
 
 	public Result getResult() {
 		return result;
@@ -78,6 +84,30 @@ public class Response implements Serializable {
 
 	public void setRoute(TrainRoute route) {
 		this.route = route;
+	}
+
+	public Reservation getReservation() {
+		return reservation;
+	}
+
+	public void setReservation(Reservation reservation) {
+		this.reservation = reservation;
+	}
+
+	public Card getCard() {
+		return card;
+	}
+
+	public void setCard(Card card) {
+		this.card = card;
+	}
+
+	public Train getBooking() {
+		return booking;
+	}
+
+	public void setBooking(Train booking) {
+		this.booking = booking;
 	}
 
 }

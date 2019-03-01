@@ -28,6 +28,18 @@ public class Config {
 		return properties.getProperty("key");
 	}
 	
+	public static String getAuthKey() {
+		return properties.getProperty("auth_key");
+	}
+	
+	public static String getShopApiKey() {
+		return properties.getProperty("shop_api_key");
+	}
+	
+	public static String getShopSecretKey() {
+		return properties.getProperty("shop_secret_key");
+	}
+	
 	public static int getRequestTimeout() {
 		return Integer.valueOf(properties.getProperty("request.timeout"));
 	}

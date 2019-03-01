@@ -1,6 +1,7 @@
 package com.gillsoft.client;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -12,6 +13,25 @@ public class Train implements Serializable {
 	private static final long serialVersionUID = 9189918545967775552L;
 	
 	private boolean added;
+	
+	@JsonProperty("reservation_id")
+	private String reservationId;
+	
+	@JsonProperty("booking_id")
+	private String bookingId;
+	
+	private BigDecimal cost;
+	private String currency;
+	private int status;
+	
+	@JsonProperty("train_number")
+	private String trainNumber;
+	
+	@JsonProperty("car_number")
+	private String carNumber;
+	
+	@JsonProperty("car_type")
+	private String carType;
 	
 	private String number;
 	private String name;
@@ -74,6 +94,8 @@ public class Train implements Serializable {
     private String providerName;
 	
     private List<CarClass> classes;
+    
+    private List<Document> documents;
 
 	public boolean isAdded() {
 		return added;
@@ -273,6 +295,78 @@ public class Train implements Serializable {
 
 	public void setClasses(List<CarClass> classes) {
 		this.classes = classes;
+	}
+
+	public String getReservationId() {
+		return reservationId;
+	}
+
+	public void setReservationId(String reservationId) {
+		this.reservationId = reservationId;
+	}
+
+	public String getBookingId() {
+		return bookingId;
+	}
+
+	public void setBookingId(String bookingId) {
+		this.bookingId = bookingId;
+	}
+
+	public BigDecimal getCost() {
+		return cost;
+	}
+
+	public void setCost(BigDecimal cost) {
+		this.cost = cost;
+	}
+
+	public String getCurrency() {
+		return currency;
+	}
+
+	public void setCurrency(String currency) {
+		this.currency = currency;
+	}
+
+	public int getStatus() {
+		return status;
+	}
+
+	public void setStatus(int status) {
+		this.status = status;
+	}
+
+	public String getTrainNumber() {
+		return trainNumber;
+	}
+
+	public void setTrainNumber(String trainNumber) {
+		this.trainNumber = trainNumber;
+	}
+
+	public String getCarNumber() {
+		return carNumber;
+	}
+
+	public void setCarNumber(String carNumber) {
+		this.carNumber = carNumber;
+	}
+
+	public String getCarType() {
+		return carType;
+	}
+
+	public void setCarType(String carType) {
+		this.carType = carType;
+	}
+
+	public List<Document> getDocuments() {
+		return documents;
+	}
+
+	public void setDocuments(List<Document> documents) {
+		this.documents = documents;
 	}
 
 }
