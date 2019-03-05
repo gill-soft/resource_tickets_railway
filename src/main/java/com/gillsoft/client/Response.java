@@ -29,6 +29,10 @@ public class Response implements Serializable {
 	private Card card;
 	
 	private Train booking;
+	
+	private Train order;
+	
+	private Refund refund; 
 
 	public Result getResult() {
 		return result;
@@ -108,6 +112,22 @@ public class Response implements Serializable {
 
 	public void setBooking(Train booking) {
 		this.booking = booking;
+	}
+
+	public Train getOrder() {
+		return order;
+	}
+
+	public void setOrder(Train order) {
+		this.order = order;
+	}
+
+	public Refund getRefund() {
+		return refund;
+	}
+
+	public void setRefund(Refund refund) {
+		this.refund = refund;
 	}
 
 }

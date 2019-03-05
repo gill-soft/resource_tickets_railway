@@ -1,29 +1,26 @@
 package com.gillsoft.client;
 
 import java.util.List;
+import java.util.Map;
 
 import com.gillsoft.model.AbstractJsonModel;
 
 public class OrderIdModel extends AbstractJsonModel {
 
 	private static final long serialVersionUID = 4318484251645220464L;
-
-	private List<ServiceIdModel> ids;
+	
+	private Map<String, List<ServiceIdModel>> orders;
 
 	public OrderIdModel() {
 
 	}
 
-	public OrderIdModel(List<ServiceIdModel> ids) {
-		this.ids = ids;
+	public Map<String, List<ServiceIdModel>> getOrders() {
+		return orders;
 	}
 
-	public List<ServiceIdModel> getIds() {
-		return ids;
-	}
-
-	public void setIds(List<ServiceIdModel> ids) {
-		this.ids = ids;
+	public void setOrders(Map<String, List<ServiceIdModel>> orders) {
+		this.orders = orders;
 	}
 
 	@Override

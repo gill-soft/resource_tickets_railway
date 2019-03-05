@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.gillsoft.model.Currency;
 
 public class CarClass implements Serializable {
 
@@ -21,7 +22,7 @@ public class CarClass implements Serializable {
 	private String notFirmCar;
 	
 	private BigDecimal cost;
-	private Map<String, BigDecimal> exchanges;
+	private Map<Currency, BigDecimal> exchanges;
 	private List<Car> cars;
 	
 	private Seats seats;
@@ -90,11 +91,11 @@ public class CarClass implements Serializable {
 		this.cost = cost;
 	}
 
-	public Map<String, BigDecimal> getExchanges() {
+	public Map<Currency, BigDecimal> getExchanges() {
 		return exchanges;
 	}
 
-	public void setExchanges(Map<String, BigDecimal> exchanges) {
+	public void setExchanges(Map<Currency, BigDecimal> exchanges) {
 		this.exchanges = exchanges;
 	}
 

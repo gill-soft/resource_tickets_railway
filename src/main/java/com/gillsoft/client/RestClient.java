@@ -38,6 +38,7 @@ import com.gillsoft.model.Customer;
 import com.gillsoft.model.ResponseError;
 import com.gillsoft.model.Seat;
 import com.gillsoft.util.RestTemplateUtil;
+import com.gillsoft.util.StringUtil;
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -55,8 +56,14 @@ public class RestClient {
 	public static final FastDateFormat dateFormat = FastDateFormat.getInstance(DATE_FORMAT);
 	public static final FastDateFormat dateTimeFormat = FastDateFormat.getInstance(DATE_TIME_FORMAT);
 	
+	public static final int RESERVETION_STATUS = 0;
+	public static final int PAIED_STATUS = 1; //TODO change
+	public static final int RETURNED_STATUS = 2; //TODO change
+	public static final int CANCEL_STATUS = 4;
+	
 	private static final String CONFIRM_CODE = "0";
 	private static final String LANG_RU = "ru";
+	private static final String SERVICE = "gd";
 	
 	private static final String STATIONS = "station.json";
 	private static final String TRAINS = "search.json";
@@ -64,9 +71,16 @@ public class RestClient {
 	private static final String CAR = "car.json";
 	private static final String ROUTE = "timetable/train_route.json";
 	private static final String RESERVATION = "reservation.json";
-	private static final String BOOKING = "booking_show.json";
+	private static final String COMMIT = "commit.json";
+	private static final String SHOW_BOOKING = "booking_show.json";
 	private static final String CANCEL = "cancel.json";
-
+	private static final String GET_REFUND_AMOUNT = "get_refund_amount.json";
+	private static final String MAKE_REFUND = "make_refund.json";
+	
+//	13939702
+//	13875070
+//	13946362
+	
 	@Autowired
     @Qualifier("RedisMemoryCache")
 	private CacheHandler cache;
@@ -223,15 +237,33 @@ public class RestClient {
 		return getResult(template, RESERVATION, params);
 	}
 	
+	public Train commit(String orderId, String amount, String currency) throws ResponseError {
+		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+		params.add("key", Config.getKey());
+		params.add("lang", LANG_RU);
+		params.add("сommit_auth_key", Config.getAuthKey());
+		params.add("signature", getSignature(orderId, amount));
+		params.add("service", SERVICE);
+		params.add("order_id", orderId);
+		params.add("amount", amount);
+		params.add("currency", currency);
+		return getResult(template, COMMIT, params).getOrder();
+	}
+	
+	private String getSignature(String orderId, String amount) {
+		return StringUtil.md5(String.join("",
+				Config.getShopApiKey(), SERVICE, orderId, amount, Config.getShopSecretKey()));
+	}
+	
 	public Train getBooking(String reservationId) throws ResponseError {
-		return bookingOperation(reservationId, BOOKING);
+		return bookingOperation(reservationId, SHOW_BOOKING);
 	}
 	
 	public Train cancelBooking(String reservationId) throws ResponseError {
 		return bookingOperation(reservationId, CANCEL);
 	}
 	
-	public Train bookingOperation(String reservationId, String method) throws ResponseError {
+	private Train bookingOperation(String reservationId, String method) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
@@ -240,14 +272,22 @@ public class RestClient {
 		return getResult(template, method, params).getBooking();
 	}
 	
-	public Response refundOperation(String reservationId, String passengerId, String method) throws ResponseError {
+	public Refund getRefundAmount(String reservationId, String passengerId) throws ResponseError {
+		return refundOperation(reservationId, passengerId, GET_REFUND_AMOUNT);
+	}
+	
+	public Refund refund(String reservationId, String passengerId) throws ResponseError {
+		return refundOperation(reservationId, passengerId, MAKE_REFUND);
+	}
+	
+	private Refund refundOperation(String reservationId, String passengerId, String method) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
 		params.add("auth_key", Config.getAuthKey());
 		params.add("reservation_id", reservationId);
 		params.add("passenger_id", passengerId);
-		return getResult(template, method, params);
+		return getResult(template, method, params).getRefund();
 	}
 	
 	private Response getResult(RestTemplate template, String method, MultiValueMap<String, String> params) throws ResponseError {

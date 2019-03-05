@@ -293,8 +293,8 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 	private Price createPrice(CarClass clas, Currency currency) {
 		BigDecimal amount = null;
 		if (currency != null
-				&& clas.getExchanges().containsKey(currency.name())) {
-			amount = clas.getExchanges().get(currency.name());
+				&& clas.getExchanges().containsKey(currency)) {
+			amount = clas.getExchanges().get(currency);
 		} else {
 			amount = clas.getCost();
 			currency = Currency.UAH;

@@ -6,12 +6,12 @@ import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.gillsoft.model.Currency;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 
 public class Reservation implements Serializable {
 
 	private static final long serialVersionUID = 7901030726391116884L;
-	
 	
     private String id;
     
@@ -27,7 +27,7 @@ public class Reservation implements Serializable {
     private String carType;
     
     private BigDecimal cost;
-    private String currency;
+    private Currency currency;
     
     @JsonProperty("passenger_departure_code")
     @JsonFormat(shape = Shape.STRING, pattern = "dd.MM.yyyy HH:mm:ss")
@@ -100,11 +100,11 @@ public class Reservation implements Serializable {
 		this.cost = cost;
 	}
 
-	public String getCurrency() {
+	public Currency getCurrency() {
 		return currency;
 	}
 
-	public void setCurrency(String currency) {
+	public void setCurrency(Currency currency) {
 		this.currency = currency;
 	}
 
