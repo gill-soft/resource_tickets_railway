@@ -124,7 +124,7 @@
 	</dependencies>
 
 	<build>
-		<finalName>eticket</finalName>
+		<finalName>tickets-railway</finalName>
 		<pluginManagement>
 			<plugins>
 				<plugin>

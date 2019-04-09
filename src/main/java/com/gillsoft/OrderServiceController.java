@@ -96,23 +96,28 @@ public class OrderServiceController extends AbstractOrderService {
 				
 				// устанавливаем данные в сервисы
 				for (ServiceItem item : order.getValue()) {
-					Customer customer = request.getCustomers().get(item.getCustomer().getId());
-					ServiceIdModel serviceId = new ServiceIdModel(reservation.getReservation().getId(), getDocumentId(train, customer));
-					orderId.getOrders().get(reservationKey).add(serviceId);
-					
-					item.setId(serviceId.asString());
-					item.setNumber(reservation.getReservation().getId());
-					item.setExpire(reservation.getReservation().getExpirationTime());
-					
-					// рейс
-					item.setSegment(segment);
-					
-					// стоимость
-					item.setPrice(fullSegment.getPrice());
-					
-					// устанавливаем место
-					item.setSeat(createSeat(train, customer));
-					resultItems.add(item);
+					try {
+						Customer customer = request.getCustomers().get(item.getCustomer().getId());
+						ServiceIdModel serviceId = new ServiceIdModel(reservation.getReservation().getId(), getDocumentId(train, customer));
+						orderId.getOrders().get(reservationKey).add(serviceId);
+						
+						item.setId(serviceId.asString());
+						item.setNumber(reservation.getReservation().getId());
+						item.setExpire(reservation.getReservation().getExpirationTime());
+						
+						// рейс
+						item.setSegment(segment);
+						
+						// стоимость
+						item.setPrice(fullSegment.getPrice());
+						
+						// устанавливаем место
+						item.setSeat(createSeat(train, customer));
+						resultItems.add(item);
+					} catch (ResponseError e) {
+						item.setError(new RestError(e.getMessage()));
+						resultItems.add(item);
+					}
 				}
 				fullSegment.setPrice(null);
 			} catch (ResponseError e) {

@@ -29,7 +29,7 @@ public class Reservation implements Serializable {
     private BigDecimal cost;
     private Currency currency;
     
-    @JsonProperty("passenger_departure_code")
+    @JsonProperty("expiration_time")
     @JsonFormat(shape = Shape.STRING, pattern = "dd.MM.yyyy HH:mm:ss")
     private Date expirationTime;
     
