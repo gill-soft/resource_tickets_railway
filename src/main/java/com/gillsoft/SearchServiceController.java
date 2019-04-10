@@ -206,8 +206,7 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 			}
 		}
 		if (!segment.getCarriages().isEmpty()) {
-			id.setCarId(clas.getCars().get(0).getId());
-			String key = id.asString();
+			String key = segment.getCarriages().get(0).getId();
 			segments.put(key, segment);
 			
 			// получаем маршрут
@@ -356,7 +355,7 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 				for (Entry<String, Integer> seat : seats.getValue().entrySet()) {
 					Seat newSeat = new Seat();
 					newSeat.setType(SeatType.SEAT);
-					newSeat.setId(seats.getKey() + ":" + seat.getKey());
+					newSeat.setId(seat.getKey());
 					newSeat.setNumber(seat.getKey());
 					newSeat.setStatus(getSeatStatus(seat.getValue()));
 					newSeats.add(newSeat);

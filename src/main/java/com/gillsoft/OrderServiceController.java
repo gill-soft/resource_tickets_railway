@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gillsoft.abstract_rest_service.AbstractOrderService;
+import com.gillsoft.client.Car;
 import com.gillsoft.client.CarClass;
 import com.gillsoft.client.Document;
 import com.gillsoft.client.OrderIdModel;
@@ -79,7 +80,7 @@ public class OrderServiceController extends AbstractOrderService {
 				client.getCar(trainResponse.getSession().getId(), idModel.getCarId());
 				
 				// создаем заказ
-				Response reservation = reservation(trainResponse, order.getValue(), request.getCustomers());
+				Response reservation = reservation(trainResponse, order.getValue(), request.getCustomers(), idModel.getCarId());
 				Train train = client.getBooking(reservation.getReservation().getId());
 				
 				// создаем рейс
@@ -160,13 +161,14 @@ public class OrderServiceController extends AbstractOrderService {
 		throw new ResponseError("Can not find in response passenger " + customer.getName() + " " + customer.getSurname());
 	}
 	
-	private Response reservation(Response trainResponse, List<ServiceItem> services, Map<String, Customer> customersMap) throws ResponseError {
+	private Response reservation(Response trainResponse, List<ServiceItem> services, Map<String, Customer> customersMap,
+			String carId) throws ResponseError {
 		List<Customer> customers = services.stream()
 				.map(s -> customersMap.get(s.getCustomer().getId())).collect(Collectors.toList());
 		List<Seat> seats = services.stream()
 				.map(ServiceItem::getSeat).collect(Collectors.toList());
 		return client.reservation(
-				trainResponse.getSession().getId(), getOperationType(trainResponse.getTrain()), customers, seats);
+				trainResponse.getSession().getId(), getOperationType(trainResponse.getTrain(), carId), customers, seats);
 	}
 	
 	private void removeNotUsedCars(Response trainResponse, TripIdModel idModel) {
@@ -179,16 +181,23 @@ public class OrderServiceController extends AbstractOrderService {
 		}
 	}
 	
-	private String getOperationType(Train train) throws ResponseError {
-		if (train.getClasses().isEmpty()
-				|| train.getClasses().get(0).getCars().isEmpty()) {
+	private String getOperationType(Train train, String carId) throws ResponseError {
+		Car finded = null;
+		for (CarClass clas : train.getClasses()) {
+			Optional<Car> o = clas.getCars().stream().filter(car -> Objects.equals(car.getId(), carId)).findFirst();
+			if (o.isPresent()) {
+				finded = o.get();
+				break;
+			}
+		}
+		if (finded == null) {
 			throw new ResponseError("Selected carriage is not present");
 		}
-		if (!train.getClasses().get(0).getCars().get(0).getOperationTypes().contains("2")
-				|| !train.getClasses().get(0).getCars().get(0).getOperationTypes().contains("3")) {
+		if (!finded.getOperationTypes().contains("2")
+				&& !finded.getOperationTypes().contains("3")) {
 			throw new ResponseError("Selected carriage has not operation type 2 or 3");
 		}
-		if (train.getClasses().get(0).getCars().get(0).getOperationTypes().contains("3")) {
+		if (finded.getOperationTypes().contains("3")) {
 			return "3";
 		} else {
 			return "2";
