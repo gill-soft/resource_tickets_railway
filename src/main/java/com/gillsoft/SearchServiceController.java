@@ -62,6 +62,9 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 	@Autowired
 	@Qualifier("MemoryCacheHandler")
 	private CacheHandler cache;
+	
+	@Autowired
+	private SeatsSchemeController schemaController;
 
 	@Override
 	public TripSearchResponse initSearchResponse(TripSearchRequest request) {
@@ -340,18 +343,43 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 
 	@Override
 	public SeatsScheme getSeatsSchemeResponse(String tripId) {
-		// TODO Auto-generated method stub
-		return null;
+		CarInfo car = getCarInfo(tripId);
+		return schemaController.getScheme(car.getSchema(), car.getClas().getName().equals("reserved") ?
+				car.getClas().getType() : null);
+	}
+	
+	private CarInfo getCarInfo(String tripId) {
+		try {
+			TripIdModel idModel = new TripIdModel().create(tripId);
+			Response response = client.getTrain(idModel.getFrom(), idModel.getTo(), idModel.getDate(), idModel.getTrain());
+			return client.getCar(response.getSession().getId(), idModel.getCarId());
+		} catch (ResponseError e) {
+			throw new RestClientException(e.getMessage());
+		}
 	}
 
 	@Override
 	public List<Seat> getSeatsResponse(String tripId) {
-		try {
-			TripIdModel idModel = new TripIdModel().create(tripId);
-			Response response = client.getTrain(idModel.getFrom(), idModel.getTo(), idModel.getDate(), idModel.getTrain());
-			CarInfo car = client.getCar(response.getSession().getId(), idModel.getCarId());
-			List<Seat> newSeats = new ArrayList<>();
-			for (Entry<String, Map<String, Integer>> seats : car.getSeats().entrySet()) {
+		//TODO
+		CarInfo car = getCarInfo(tripId);
+		Map<String, SeatType> types = schemaController.getCarriageSeats(
+				car.getSchema(), car.getClas().getName().equals("reserved") ?
+				car.getClas().getType() : null);
+		
+		List<Seat> newSeats = new ArrayList<>();
+		for (Entry<String, Map<String, Integer>> seats : car.getSeats().entrySet()) {
+			if (types != null) {
+				for (Entry<String, SeatType> entry : types.entrySet()) {
+					Seat newSeat = new Seat();
+					newSeat.setType(entry.getValue());
+					newSeat.setId(entry.getKey());
+					newSeat.setNumber(entry.getKey());
+					if (SeatType.SEAT == entry.getValue()) {
+						newSeat.setStatus(getSeatStatus(seats.getValue().get(entry.getKey())));
+					}
+					newSeats.add(newSeat);
+				}
+			} else {
 				for (Entry<String, Integer> seat : seats.getValue().entrySet()) {
 					Seat newSeat = new Seat();
 					newSeat.setType(SeatType.SEAT);
@@ -361,10 +389,8 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 					newSeats.add(newSeat);
 				}
 			}
-			return newSeats;
-		} catch (ResponseError e) {
-			throw new RestClientException(e.getMessage());
 		}
+		return newSeats;
 	}
 	
 	private SeatStatus getSeatStatus(Integer status) {
