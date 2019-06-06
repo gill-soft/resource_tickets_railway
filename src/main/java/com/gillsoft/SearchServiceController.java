@@ -360,26 +360,31 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 
 	@Override
 	public List<Seat> getSeatsResponse(String tripId) {
-		//TODO
 		CarInfo car = getCarInfo(tripId);
 		Map<String, SeatType> types = schemaController.getCarriageSeats(
 				car.getSchema(), car.getClas().getName().equals("reserved") ?
 				car.getClas().getType() : null);
 		
 		List<Seat> newSeats = new ArrayList<>();
-		for (Entry<String, Map<String, Integer>> seats : car.getSeats().entrySet()) {
-			if (types != null) {
-				for (Entry<String, SeatType> entry : types.entrySet()) {
-					Seat newSeat = new Seat();
-					newSeat.setType(entry.getValue());
-					newSeat.setId(entry.getKey());
-					newSeat.setNumber(entry.getKey());
-					if (SeatType.SEAT == entry.getValue()) {
-						newSeat.setStatus(getSeatStatus(seats.getValue().get(entry.getKey())));
+		
+		if (types != null) {
+			for (Entry<String, SeatType> entry : types.entrySet()) {
+				Seat newSeat = new Seat();
+				newSeat.setType(entry.getValue());
+				newSeat.setId(entry.getKey());
+				newSeat.setNumber(entry.getKey());
+				if (SeatType.SEAT == entry.getValue()) {
+					for (Entry<String, Map<String, Integer>> seats : car.getSeats().entrySet()) {
+						if (seats.getValue().containsKey(entry.getKey())) {
+							newSeat.setStatus(getSeatStatus(seats.getValue().get(entry.getKey())));
+							break;
+						}
 					}
-					newSeats.add(newSeat);
 				}
-			} else {
+				newSeats.add(newSeat);
+			}
+		} else {
+			for (Entry<String, Map<String, Integer>> seats : car.getSeats().entrySet()) {
 				for (Entry<String, Integer> seat : seats.getValue().entrySet()) {
 					Seat newSeat = new Seat();
 					newSeat.setType(SeatType.SEAT);
