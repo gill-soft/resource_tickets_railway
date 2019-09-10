@@ -65,21 +65,17 @@ public class RestClient {
 	private static final String LANG_RU = "ru";
 	private static final String SERVICE = "gd";
 	
-	private static final String STATIONS = "station.json";
-	private static final String TRAINS = "search.json";
-	private static final String TRAIN = "train.json";
-	private static final String CAR = "car.json";
-	private static final String ROUTE = "timetable/train_route.json";
-	private static final String RESERVATION = "reservation.json";
-	private static final String COMMIT = "commit.json";
-	private static final String SHOW_BOOKING = "booking_show.json";
-	private static final String CANCEL = "cancel.json";
-	private static final String GET_REFUND_AMOUNT = "get_refund_amount.json";
-	private static final String MAKE_REFUND = "make_refund.json";
-	
-//	13939702
-//	13875070
-//	13946362
+	private static final String STATIONS = "rail/station.json";
+	private static final String TRAINS = "rail/search.json";
+	private static final String TRAIN = "rail/train.json";
+	private static final String CAR = "rail/car.json";
+	private static final String ROUTE = "rail/timetable/train_route.json";
+	private static final String RESERVATION = "rail/reservation.json";
+	private static final String COMMIT = "payment/commit.json";
+	private static final String SHOW_BOOKING = "rail/booking_show.json";
+	private static final String CANCEL = "rail/cancel.json";
+	private static final String GET_REFUND_AMOUNT = "rail/get_refund_amount.json";
+	private static final String MAKE_REFUND = "rail/make_refund.json";
 	
 	@Autowired
     @Qualifier("RedisMemoryCache")
