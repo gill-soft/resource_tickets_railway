@@ -241,7 +241,7 @@ public class RestClient {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
-		params.add("сommit_auth_key", Config.getAuthKey());
+		params.add("commit_auth_key", Config.getAuthKey());
 		params.add("signature", getSignature(orderId, amount));
 		params.add("service", SERVICE);
 		params.add("order_id", orderId);
