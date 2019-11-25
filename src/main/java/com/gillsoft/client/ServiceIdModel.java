@@ -1,6 +1,9 @@
 package com.gillsoft.client;
 
+import java.math.BigDecimal;
+
 import com.gillsoft.model.AbstractJsonModel;
+import com.gillsoft.model.Currency;
 
 public class ServiceIdModel extends AbstractJsonModel {
 
@@ -10,13 +13,20 @@ public class ServiceIdModel extends AbstractJsonModel {
 	
 	private String passId;
 	
+	private BigDecimal cost;
+	
+	private Currency currency;
+	
 	public ServiceIdModel() {
 		
 	}
 
-	public ServiceIdModel(String id, String passId) {
+	public ServiceIdModel(String id, String passId, BigDecimal cost, Currency currency) {
+		super();
 		this.id = id;
 		this.passId = passId;
+		this.cost = cost;
+		this.currency = currency;
 	}
 
 	public String getId() {
@@ -33,6 +43,22 @@ public class ServiceIdModel extends AbstractJsonModel {
 
 	public void setPassId(String passId) {
 		this.passId = passId;
+	}
+
+	public BigDecimal getCost() {
+		return cost;
+	}
+
+	public void setCost(BigDecimal cost) {
+		this.cost = cost;
+	}
+
+	public Currency getCurrency() {
+		return currency;
+	}
+
+	public void setCurrency(Currency currency) {
+		this.currency = currency;
 	}
 
 	@Override

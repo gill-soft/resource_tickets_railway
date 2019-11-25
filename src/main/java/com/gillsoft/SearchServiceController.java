@@ -209,7 +209,8 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 			}
 		}
 		if (!segment.getCarriages().isEmpty()) {
-			String key = segment.getCarriages().get(0).getId();
+			id.setCarId(null);
+			String key = id.asString();
 			segments.put(key, segment);
 			
 			// получаем маршрут
@@ -295,15 +296,18 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 	private Price createPrice(CarClass clas, Currency currency) {
 		BigDecimal amount = null;
 		if (currency != null
-				&& clas.getExchanges().containsKey(currency)) {
-			amount = clas.getExchanges().get(currency);
+				&& clas.getExchanges().containsKey(currency.name())) {
+			amount = clas.getExchanges().get(currency.name());
 		} else {
 			amount = clas.getCost();
 			currency = Currency.UAH;
 		}
 		// тариф
 		Tariff tariff = new Tariff();
-		tariff.setId("0");
+		tariff.setId("1");
+		tariff.setName(Lang.RU, "Взрослый");
+		tariff.setName(Lang.UA, "Дорослий");
+		tariff.setName(Lang.EN, "Adult");
 		tariff.setValue(amount);
 		
 		// стоимость

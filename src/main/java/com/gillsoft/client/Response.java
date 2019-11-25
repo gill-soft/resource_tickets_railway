@@ -2,6 +2,7 @@ package com.gillsoft.client;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -32,7 +33,9 @@ public class Response implements Serializable {
 	
 	private Train order;
 	
-	private Refund refund; 
+	private Refund refund;
+	
+	private Map<String, String> pdf;
 
 	public Result getResult() {
 		return result;
@@ -128,6 +131,14 @@ public class Response implements Serializable {
 
 	public void setRefund(Refund refund) {
 		this.refund = refund;
+	}
+
+	public Map<String, String> getPdf() {
+		return pdf;
+	}
+
+	public void setPdf(Map<String, String> pdf) {
+		this.pdf = pdf;
 	}
 
 }

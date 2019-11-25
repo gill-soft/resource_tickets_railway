@@ -5,9 +5,8 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.gillsoft.model.Currency;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Reservation implements Serializable {
 
@@ -27,7 +26,7 @@ public class Reservation implements Serializable {
     private String carType;
     
     private BigDecimal cost;
-    private Currency currency;
+    private String currency;
     
     @JsonProperty("expiration_time")
     @JsonFormat(shape = Shape.STRING, pattern = "dd.MM.yyyy HH:mm:ss")
@@ -100,11 +99,11 @@ public class Reservation implements Serializable {
 		this.cost = cost;
 	}
 
-	public Currency getCurrency() {
+	public String getCurrency() {
 		return currency;
 	}
 
-	public void setCurrency(Currency currency) {
+	public void setCurrency(String currency) {
 		this.currency = currency;
 	}
 

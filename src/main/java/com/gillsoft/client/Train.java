@@ -7,7 +7,6 @@ import java.util.Date;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.gillsoft.model.Currency;
 
 public class Train implements Serializable {
 
@@ -22,7 +21,7 @@ public class Train implements Serializable {
 	private String bookingId;
 	
 	private BigDecimal cost;
-	private Currency currency;
+	private String currency;
 	private int status;
 	private boolean cancelled;
 	private boolean paid;
@@ -96,7 +95,9 @@ public class Train implements Serializable {
 	@JsonProperty("provider_name")
     private String providerName;
 	
-    private List<CarClass> classes;
+	private List<CarClass> classes;
+	
+    private List<Exchange> exchanges;
     
     private List<Document> documents;
 
@@ -324,11 +325,11 @@ public class Train implements Serializable {
 		this.cost = cost;
 	}
 
-	public Currency getCurrency() {
+	public String getCurrency() {
 		return currency;
 	}
 
-	public void setCurrency(Currency currency) {
+	public void setCurrency(String currency) {
 		this.currency = currency;
 	}
 
@@ -378,6 +379,14 @@ public class Train implements Serializable {
 
 	public void setCarType(String carType) {
 		this.carType = carType;
+	}
+
+	public List<Exchange> getExchanges() {
+		return exchanges;
+	}
+
+	public void setExchanges(List<Exchange> exchanges) {
+		this.exchanges = exchanges;
 	}
 
 	public List<Document> getDocuments() {

@@ -1,14 +1,13 @@
 package com.gillsoft;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,6 +16,7 @@ import com.gillsoft.abstract_rest_service.AbstractOrderService;
 import com.gillsoft.client.Car;
 import com.gillsoft.client.CarClass;
 import com.gillsoft.client.Document;
+import com.gillsoft.client.Exchange;
 import com.gillsoft.client.OrderIdModel;
 import com.gillsoft.client.Refund;
 import com.gillsoft.client.Response;
@@ -24,7 +24,10 @@ import com.gillsoft.client.RestClient;
 import com.gillsoft.client.ServiceIdModel;
 import com.gillsoft.client.Train;
 import com.gillsoft.client.TripIdModel;
+import com.gillsoft.model.Currency;
 import com.gillsoft.model.Customer;
+import com.gillsoft.model.DocumentType;
+import com.gillsoft.model.Lang;
 import com.gillsoft.model.Locality;
 import com.gillsoft.model.Organisation;
 import com.gillsoft.model.Price;
@@ -37,7 +40,6 @@ import com.gillsoft.model.Tariff;
 import com.gillsoft.model.Vehicle;
 import com.gillsoft.model.request.OrderRequest;
 import com.gillsoft.model.response.OrderResponse;
-import com.gillsoft.util.StringUtil;
 
 @RestController
 public class OrderServiceController extends AbstractOrderService {
@@ -67,10 +69,9 @@ public class OrderServiceController extends AbstractOrderService {
 		
 		// список билетов
 		OrderIdModel orderId = new OrderIdModel();
-		orderId.setOrders(new HashMap<>());
-		for (Entry<String, List<ServiceItem>> order : getTripItems(request).entrySet()) {
-			String[] params = order.getKey().split(";");
-			TripIdModel idModel = new TripIdModel().create(params[0]);
+		orderId.setOrders(new ArrayList<>());
+		for (ServiceItem item : request.getServices()) {
+			TripIdModel idModel = new TripIdModel().create(item.getCarriage().getId());
 			try {
 				Response trainResponse = client.getTrain(idModel.getFrom(), idModel.getTo(), idModel.getDate(), idModel.getTrain());
 				
@@ -79,53 +80,44 @@ public class OrderServiceController extends AbstractOrderService {
 				
 				client.getCar(trainResponse.getSession().getId(), idModel.getCarId());
 				
-				// создаем заказ
-				Response reservation = reservation(trainResponse, order.getValue(), request.getCustomers(), idModel.getCarId());
-				Train train = client.getBooking(reservation.getReservation().getId());
-				
 				// создаем рейс
 				Segment segment = new Segment();
 				segment.setId(search.addSegment(vehicles, localities, organisations, segments, trainResponse.getTrain(),
 						trainResponse.getTrain().getClasses().get(0), request.getCurrency()));
-				Segment fullSegment = segments.get(segment.getId());
-				
-				// создаем ид заказов
-				String reservationKey = String.join(";", reservation.getReservation().getId(),
-						reservation.getReservation().getCost().toString(),
-						reservation.getReservation().getCurrency().name());
-				orderId.getOrders().put(reservationKey, new ArrayList<>(order.getValue().size()));
+				segments.get(segment.getId()).setPrice(null);
+			
+				// создаем заказ
+				Response reservation = client.reservation(
+						trainResponse.getSession().getId(), getOperationType(trainResponse.getTrain(), idModel.getCarId()),
+						request.getCustomers().get(item.getCustomer().getId()), item.getSeat());
+				Train booking = client.getBooking(reservation.getReservation().getId());
 				
 				// устанавливаем данные в сервисы
-				for (ServiceItem item : order.getValue()) {
-					try {
-						Customer customer = request.getCustomers().get(item.getCustomer().getId());
-						ServiceIdModel serviceId = new ServiceIdModel(reservation.getReservation().getId(), getDocumentId(train, customer));
-						orderId.getOrders().get(reservationKey).add(serviceId);
-						
-						item.setId(serviceId.asString());
-						item.setNumber(reservation.getReservation().getId());
-						item.setExpire(reservation.getReservation().getExpirationTime());
-						
-						// рейс
-						item.setSegment(segment);
-						
-						// стоимость
-						item.setPrice(fullSegment.getPrice());
-						
-						// устанавливаем место
-						item.setSeat(createSeat(train, customer));
-						resultItems.add(item);
-					} catch (ResponseError e) {
-						item.setError(new RestError(e.getMessage()));
-						resultItems.add(item);
-					}
-				}
-				fullSegment.setPrice(null);
+				Customer customer = request.getCustomers().get(item.getCustomer().getId());
+				
+				// создаем ид заказа
+				ServiceIdModel serviceId = new ServiceIdModel(reservation.getReservation().getId(),
+						getDocumentId(booking, customer),
+						reservation.getReservation().getCost(),
+						Currency.valueOf(reservation.getReservation().getCurrency()));
+				orderId.getOrders().add(serviceId);
+				
+				item.setId(serviceId.asString());
+				item.setNumber(reservation.getReservation().getId());
+				item.setExpire(reservation.getReservation().getExpirationTime());
+				
+				// рейс
+				item.setSegment(segment);
+				
+				// стоимость
+				item.setPrice(createPrice(booking, request.getCurrency()));
+				
+				// устанавливаем место
+				item.setSeat(createSeat(booking, customer));
+				resultItems.add(item);
 			} catch (ResponseError e) {
-				for (ServiceItem item : order.getValue()) {
-					item.setError(new RestError(e.getMessage()));
-					resultItems.add(item);
-				}
+				item.setError(new RestError(e.getMessage()));
+				resultItems.add(item);
 			}
 		}
 		response.setOrderId(orderId.asString());
@@ -137,14 +129,48 @@ public class OrderServiceController extends AbstractOrderService {
 		return response;
 	}
 	
-	private String getDocumentId(Train train, Customer customer) throws ResponseError {
-		Optional<Document> o = train.getDocuments().stream().filter(document ->
-				Objects.equals(document.getFirstName().toUpperCase(), customer.getName().toUpperCase())
-					&& Objects.equals(document.getLastName().toUpperCase(), customer.getSurname().toUpperCase())).findFirst();
-		if (o.isPresent()) {
-			return o.get().getId();
+	private Price createPrice(Train booking, Currency currency) {
+		BigDecimal amount = null;
+		if (currency != null) {
+			for (Exchange exchange : booking.getExchanges()) {
+				if (currency.name().equals(exchange.getCurrency())) {
+					amount = exchange.getCost();
+					break;
+				}
+			}
+		} else {
+			amount = booking.getCost();
+			currency = Currency.UAH;
 		}
-		throw new ResponseError("Can not find in response passenger " + customer.getName() + " " + customer.getSurname());
+		// тариф
+		Tariff tariff = new Tariff();
+		tariff.setId(booking.getDocuments().get(0).getAdult());
+		if ("1".equals(tariff.getId())) {
+			tariff.setName(Lang.RU, "Взрослый");
+			tariff.setName(Lang.UA, "Дорослий");
+			tariff.setName(Lang.EN, "Adult");
+		} else {
+			tariff.setName(Lang.RU, "Детский");
+			tariff.setName(Lang.UA, "Дитячий");
+			tariff.setName(Lang.EN, "Child");
+		}
+		tariff.setValue(amount);
+		
+		// стоимость
+		Price price = new Price();
+		price.setCurrency(currency);
+		price.setAmount(amount);
+		price.setTariff(tariff);
+		return price;
+	}
+	
+	private String getDocumentId(Train train, Customer customer) throws ResponseError {
+		if (train.getDocuments() == null
+				|| train.getDocuments().isEmpty()) {
+			throw new ResponseError("Can not find in response passenger " + customer.getName() + " " + customer.getSurname());
+		} else {
+			return train.getDocuments().get(0).getId();
+		}
 	}
 	
 	private Seat createSeat(Train train, Customer customer) throws ResponseError {
@@ -159,16 +185,6 @@ public class OrderServiceController extends AbstractOrderService {
 			}
 		}
 		throw new ResponseError("Can not find in response passenger " + customer.getName() + " " + customer.getSurname());
-	}
-	
-	private Response reservation(Response trainResponse, List<ServiceItem> services, Map<String, Customer> customersMap,
-			String carId) throws ResponseError {
-		List<Customer> customers = services.stream()
-				.map(s -> customersMap.get(s.getCustomer().getId())).collect(Collectors.toList());
-		List<Seat> seats = services.stream()
-				.map(ServiceItem::getSeat).collect(Collectors.toList());
-		return client.reservation(
-				trainResponse.getSession().getId(), getOperationType(trainResponse.getTrain(), carId), customers, seats);
 	}
 	
 	private void removeNotUsedCars(Response trainResponse, TripIdModel idModel) {
@@ -202,28 +218,6 @@ public class OrderServiceController extends AbstractOrderService {
 		} else {
 			return "2";
 		}
-	}
-	
-	/*
-	 * В заказе ресурса можно оформить максимум 4 пассажира в одном заказе.
-	 */
-	private Map<String, List<ServiceItem>> getTripItems(OrderRequest request) {
-		Map<String, List<ServiceItem>> trips = new HashMap<>();
-		for (ServiceItem item : request.getServices()) {
-			String tripId = item.getSegment().getId();
-			List<ServiceItem> items = trips.get(tripId);
-			if (items == null) {
-				items = new ArrayList<>();
-				trips.put(tripId, items);
-			}
-			if (items.size() == 4) {
-				trips.put(String.join(";", tripId, StringUtil.generateUUID()), trips.get(tripId));
-				items = new ArrayList<>();
-				trips.put(tripId, items);
-			}
-			items.add(item);
-		}
-		return trips;
 	}
 
 	@Override
@@ -261,8 +255,7 @@ public class OrderServiceController extends AbstractOrderService {
 	@Override
 	public OrderResponse confirmResponse(String orderId) {
 		return confirmOperation(orderId, (id) -> {
-			String[] params = id.split(";");
-			Train confirm = client.commit(params[0], params[1], params[2]);
+			Train confirm = client.commit(id.getId(), id.getCost(), id.getCurrency().name());
 			if (!confirm.isPaid()) {
 				throw new ResponseError("Can not pay service.");
 			}
@@ -272,8 +265,7 @@ public class OrderServiceController extends AbstractOrderService {
 	@Override
 	public OrderResponse cancelResponse(String orderId) {
 		return confirmOperation(orderId, (id) -> {
-			String reservationId = id.split(";")[0];
-			Train cancel = client.cancelBooking(reservationId);
+			Train cancel = client.cancelBooking(id.getId());
 			if (!cancel.isCancelled()) {
 				throw new ResponseError("Can not cancel service.");
 			}
@@ -291,25 +283,20 @@ public class OrderServiceController extends AbstractOrderService {
 		OrderIdModel model = new OrderIdModel().create(orderId);
 		
 		// отменяем заказы и формируем ответ
-		for (Entry<String, List<ServiceIdModel>> entry : model.getOrders().entrySet()) {
-			String reservationId = entry.getKey().split(";")[0];
+		for (ServiceIdModel idModel : model.getOrders()) {
 			try {
 				// получаем заказ и проверяем статус
-				Train booking = client.getBooking(reservationId);
+				Train booking = client.getBooking(idModel.getId());
 				if (booking.getStatus() == RestClient.RESERVETION_STATUS) {
 					
 					// выполняем подтверждение
-					operation.confirm(entry.getKey());
+					operation.confirm(idModel);
 				} else if (booking.getStatus() != confirmStatus) {
 					throw new ResponseError(errorMessage);
 				}
-				for (ServiceIdModel idModel : entry.getValue()) {
-					addServiceItems(resultItems, idModel, true, null);
-				}
+				addServiceItems(resultItems, idModel, true, null);
 			} catch (ResponseError e) {
-				for (ServiceIdModel idModel : entry.getValue()) {
-					addServiceItems(resultItems, idModel, false, new RestError(e.getMessage()));
-				}
+				addServiceItems(resultItems, idModel, false, new RestError(e.getMessage()));
 			}
 		}
 		return response;
@@ -340,7 +327,7 @@ public class OrderServiceController extends AbstractOrderService {
 				
 				// стоимость
 				Price price = new Price();
-				price.setCurrency(refund.getCurrency());
+				price.setCurrency(Currency.valueOf(refund.getCurrency()));
 				price.setAmount(refund.getAmount());
 				price.setTariff(tariff);
 				
@@ -384,13 +371,37 @@ public class OrderServiceController extends AbstractOrderService {
 
 	@Override
 	public OrderResponse getPdfDocumentsResponse(OrderRequest request) {
-		// TODO Auto-generated method stub
-		return null;
+		OrderResponse response = new OrderResponse();
+		response.setServices(new ArrayList<>());
+		
+		// преобразовываем ид заказа в объкт
+		OrderIdModel model = new OrderIdModel().create(request.getOrderId());
+		
+		// отменяем заказы и формируем ответ
+		for (ServiceIdModel idModel : model.getOrders()) {
+			try {
+				String base64 = client.getBase64Ticket(idModel.getId());
+				if (base64 != null) {
+					List<com.gillsoft.model.Document> documents = new ArrayList<>();
+					com.gillsoft.model.Document document = new com.gillsoft.model.Document();
+					document.setType(DocumentType.TICKET);
+					document.setBase64(base64);
+					documents.add(document);
+					ServiceItem item = new ServiceItem();
+					item.setId(idModel.asString());
+					item.setDocuments(documents);
+					response.getServices().add(item);
+				}
+			} catch (ResponseError e) {
+				addServiceItems(response.getServices(), idModel, false, new RestError(e.getMessage()));
+			}
+		}
+		return response;
 	}
 	
 	private interface ConfirmOperation {
 		
-		public void confirm(String id) throws ResponseError;
+		public void confirm(ServiceIdModel id) throws ResponseError;
 		
 	}
 

@@ -3,14 +3,12 @@ package com.gillsoft.client;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
-import com.gillsoft.model.Currency;
-
 public class Refund implements Serializable {
 
 	private static final long serialVersionUID = -1173138241821637851L;
 
 	private BigDecimal amount;
-	private Currency currency;
+	private String currency;
 	private boolean success;
 
 	public BigDecimal getAmount() {
@@ -21,11 +19,11 @@ public class Refund implements Serializable {
 		this.amount = amount;
 	}
 
-	public Currency getCurrency() {
+	public String getCurrency() {
 		return currency;
 	}
 
-	public void setCurrency(Currency currency) {
+	public void setCurrency(String currency) {
 		this.currency = currency;
 	}
 

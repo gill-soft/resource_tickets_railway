@@ -1,5 +1,6 @@
 package com.gillsoft.client;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -9,7 +10,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
@@ -52,8 +52,10 @@ public class RestClient {
 	public static final String ROUTE_CACHE_KEY = "tickets.route.";
 	
 	public static final String DATE_FORMAT = "dd-MM-yyyy";
+	public static final String SECOND_DATE_FORMAT = "dd.MM.yyyy";
 	public static final String DATE_TIME_FORMAT = "dd-MM-yyyy HH:mm";
 	public static final FastDateFormat dateFormat = FastDateFormat.getInstance(DATE_FORMAT);
+	public static final FastDateFormat secondDateFormat = FastDateFormat.getInstance(SECOND_DATE_FORMAT);
 	public static final FastDateFormat dateTimeFormat = FastDateFormat.getInstance(DATE_TIME_FORMAT);
 	
 	public static final int RESERVETION_STATUS = 0;
@@ -76,6 +78,7 @@ public class RestClient {
 	private static final String CANCEL = "rail/cancel.json";
 	private static final String GET_REFUND_AMOUNT = "rail/get_refund_amount.json";
 	private static final String MAKE_REFUND = "rail/make_refund.json";
+	private static final String BOOKING_PDF = "rail/booking_pdf.json";
 	
 	@Autowired
     @Qualifier("RedisMemoryCache")
@@ -216,24 +219,20 @@ public class RestClient {
 		return getResult(searchTemplate, ROUTE, params).getRoute();
 	}
 	
-	public Response reservation(String sessionId, String operationType, List<Customer> customers, List<Seat> seats) throws ResponseError {
+	public Response reservation(String sessionId, String operationType, Customer customer, Seat seat) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
 		params.add("session_id", sessionId);
-		List<String> passengers = new ArrayList<>(customers.size());
-		for (Customer customer : customers) {
-			passengers.add(String.join(":", customer.getName(), customer.getSurname(), "", ""));
-		}
-		params.add("passengers", String.join("|", passengers));
+		params.add("passengers", String.join(":", customer.getName(), customer.getSurname(), "",
+				customer.getBirthday() != null ? secondDateFormat.format(customer.getBirthday()) : ""));
 		params.add("auth_key", Config.getAuthKey());
-		params.add("no_clothes", "1");
 		params.add("operation_type", operationType);
-		params.add("range", String.join(",", seats.stream().map(Seat::getId).collect(Collectors.toList())));
+		params.add("range", seat.getId());
 		return getResult(template, RESERVATION, params);
 	}
 	
-	public Train commit(String orderId, String amount, String currency) throws ResponseError {
+	public Train commit(String orderId, BigDecimal amount, String currency) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
@@ -241,31 +240,35 @@ public class RestClient {
 		params.add("signature", getSignature(orderId, amount));
 		params.add("service", SERVICE);
 		params.add("order_id", orderId);
-		params.add("amount", amount);
+		params.add("amount", String.format("%.2f", amount).replace(",", "."));
 		params.add("currency", currency);
 		return getResult(template, COMMIT, params).getOrder();
 	}
 	
-	private String getSignature(String orderId, String amount) {
+	private String getSignature(String orderId, BigDecimal amount) {
 		return StringUtil.md5(String.join("",
-				Config.getShopApiKey(), SERVICE, orderId, amount, Config.getShopSecretKey()));
+				Config.getShopApiKey(), SERVICE, orderId, String.format("%.2f", amount).replace(",", "."), Config.getShopSecretKey()));
 	}
 	
 	public Train getBooking(String reservationId) throws ResponseError {
-		return bookingOperation(reservationId, SHOW_BOOKING);
+		return bookingOperation(reservationId, SHOW_BOOKING).getBooking();
 	}
 	
 	public Train cancelBooking(String reservationId) throws ResponseError {
-		return bookingOperation(reservationId, CANCEL);
+		return bookingOperation(reservationId, CANCEL).getBooking();
 	}
 	
-	private Train bookingOperation(String reservationId, String method) throws ResponseError {
+	public String getBase64Ticket(String reservationId) throws ResponseError {
+		return bookingOperation(reservationId, BOOKING_PDF).getPdf().get("base64_string");
+	}
+	
+	private Response bookingOperation(String reservationId, String method) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
 		params.add("auth_key", Config.getAuthKey());
 		params.add("reservation_id", reservationId);
-		return getResult(template, method, params).getBooking();
+		return getResult(template, method, params);
 	}
 	
 	public Refund getRefundAmount(String reservationId, String passengerId) throws ResponseError {
