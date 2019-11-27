@@ -13,6 +13,8 @@ public class ServiceIdModel extends AbstractJsonModel {
 	
 	private String passId;
 	
+	private String auth;
+	
 	private BigDecimal cost;
 	
 	private Currency currency;
@@ -21,10 +23,11 @@ public class ServiceIdModel extends AbstractJsonModel {
 		
 	}
 
-	public ServiceIdModel(String id, String passId, BigDecimal cost, Currency currency) {
+	public ServiceIdModel(String id, String passId, String auth, BigDecimal cost, Currency currency) {
 		super();
 		this.id = id;
 		this.passId = passId;
+		this.auth = auth;
 		this.cost = cost;
 		this.currency = currency;
 	}
@@ -43,6 +46,14 @@ public class ServiceIdModel extends AbstractJsonModel {
 
 	public void setPassId(String passId) {
 		this.passId = passId;
+	}
+
+	public String getAuth() {
+		return auth;
+	}
+
+	public void setAuth(String auth) {
+		this.auth = auth;
 	}
 
 	public BigDecimal getCost() {

@@ -226,17 +226,19 @@ public class RestClient {
 		params.add("session_id", sessionId);
 		params.add("passengers", String.join(":", customer.getName(), customer.getSurname(), "",
 				customer.getBirthday() != null ? secondDateFormat.format(customer.getBirthday()) : ""));
-		params.add("auth_key", Config.getAuthKey());
+		params.add("email", StringUtil.generateUUID() + Config.getSaleEmailSuffix());
+		params.add("name", Config.getSaleName());
+		params.add("phone", Config.getSalePhone());
 		params.add("operation_type", operationType);
 		params.add("range", seat.getId());
 		return getResult(template, RESERVATION, params);
 	}
 	
-	public Train commit(String orderId, BigDecimal amount, String currency) throws ResponseError {
+	public Train commit(String orderId, BigDecimal amount, String currency, String authKey) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
-		params.add("commit_auth_key", Config.getAuthKey());
+		params.add("commit_auth_key", authKey);
 		params.add("signature", getSignature(orderId, amount));
 		params.add("service", SERVICE);
 		params.add("order_id", orderId);
@@ -250,40 +252,40 @@ public class RestClient {
 				Config.getShopApiKey(), SERVICE, orderId, String.format("%.2f", amount).replace(",", "."), Config.getShopSecretKey()));
 	}
 	
-	public Train getBooking(String reservationId) throws ResponseError {
-		return bookingOperation(reservationId, SHOW_BOOKING).getBooking();
+	public Train getBooking(String reservationId, String authKey) throws ResponseError {
+		return bookingOperation(reservationId, authKey, SHOW_BOOKING).getBooking();
 	}
 	
-	public Train cancelBooking(String reservationId) throws ResponseError {
-		return bookingOperation(reservationId, CANCEL).getBooking();
+	public Train cancelBooking(String reservationId, String authKey) throws ResponseError {
+		return bookingOperation(reservationId, authKey, CANCEL).getBooking();
 	}
 	
-	public String getBase64Ticket(String reservationId) throws ResponseError {
-		return bookingOperation(reservationId, BOOKING_PDF).getPdf().get("base64_string");
+	public String getBase64Ticket(String reservationId, String authKey) throws ResponseError {
+		return bookingOperation(reservationId, authKey, BOOKING_PDF).getPdf().get("base64_string");
 	}
 	
-	private Response bookingOperation(String reservationId, String method) throws ResponseError {
+	private Response bookingOperation(String reservationId, String authKey, String method) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
-		params.add("auth_key", Config.getAuthKey());
+		params.add("auth_key", authKey);
 		params.add("reservation_id", reservationId);
 		return getResult(template, method, params);
 	}
 	
-	public Refund getRefundAmount(String reservationId, String passengerId) throws ResponseError {
-		return refundOperation(reservationId, passengerId, GET_REFUND_AMOUNT);
+	public Refund getRefundAmount(String reservationId, String passengerId, String authKey) throws ResponseError {
+		return refundOperation(reservationId, passengerId, authKey, GET_REFUND_AMOUNT);
 	}
 	
-	public Refund refund(String reservationId, String passengerId) throws ResponseError {
-		return refundOperation(reservationId, passengerId, MAKE_REFUND);
+	public Refund refund(String reservationId, String passengerId, String authKey) throws ResponseError {
+		return refundOperation(reservationId, passengerId, authKey, MAKE_REFUND);
 	}
 	
-	private Refund refundOperation(String reservationId, String passengerId, String method) throws ResponseError {
+	private Refund refundOperation(String reservationId, String passengerId, String authKey, String method) throws ResponseError {
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("key", Config.getKey());
 		params.add("lang", LANG_RU);
-		params.add("auth_key", Config.getAuthKey());
+		params.add("auth_key",  authKey);
 		params.add("reservation_id", reservationId);
 		params.add("passenger_id", passengerId);
 		return getResult(template, method, params).getRefund();

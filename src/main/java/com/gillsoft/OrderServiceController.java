@@ -90,7 +90,7 @@ public class OrderServiceController extends AbstractOrderService {
 				Response reservation = client.reservation(
 						trainResponse.getSession().getId(), getOperationType(trainResponse.getTrain(), idModel.getCarId()),
 						request.getCustomers().get(item.getCustomer().getId()), item.getSeat());
-				Train booking = client.getBooking(reservation.getReservation().getId());
+				Train booking = client.getBooking(reservation.getReservation().getId(), reservation.getCard().getAuthKey());
 				
 				// устанавливаем данные в сервисы
 				Customer customer = request.getCustomers().get(item.getCustomer().getId());
@@ -98,6 +98,7 @@ public class OrderServiceController extends AbstractOrderService {
 				// создаем ид заказа
 				ServiceIdModel serviceId = new ServiceIdModel(reservation.getReservation().getId(),
 						getDocumentId(booking, customer),
+						reservation.getCard().getAuthKey(),
 						reservation.getReservation().getCost(),
 						Currency.valueOf(reservation.getReservation().getCurrency()));
 				orderId.getOrders().add(serviceId);
@@ -255,7 +256,7 @@ public class OrderServiceController extends AbstractOrderService {
 	@Override
 	public OrderResponse confirmResponse(String orderId) {
 		return confirmOperation(orderId, (id) -> {
-			Train confirm = client.commit(id.getId(), id.getCost(), id.getCurrency().name());
+			Train confirm = client.commit(id.getId(), id.getCost(), id.getCurrency().name(), id.getAuth());
 			if (!confirm.isPaid()) {
 				throw new ResponseError("Can not pay service.");
 			}
@@ -265,7 +266,7 @@ public class OrderServiceController extends AbstractOrderService {
 	@Override
 	public OrderResponse cancelResponse(String orderId) {
 		return confirmOperation(orderId, (id) -> {
-			Train cancel = client.cancelBooking(id.getId());
+			Train cancel = client.cancelBooking(id.getId(), id.getAuth());
 			if (!cancel.isCancelled()) {
 				throw new ResponseError("Can not cancel service.");
 			}
@@ -286,7 +287,7 @@ public class OrderServiceController extends AbstractOrderService {
 		for (ServiceIdModel idModel : model.getOrders()) {
 			try {
 				// получаем заказ и проверяем статус
-				Train booking = client.getBooking(idModel.getId());
+				Train booking = client.getBooking(idModel.getId(), idModel.getAuth());
 				if (booking.getStatus() == RestClient.RESERVETION_STATUS) {
 					
 					// выполняем подтверждение
@@ -318,7 +319,7 @@ public class OrderServiceController extends AbstractOrderService {
 		for (ServiceItem serviceItem : request.getServices()) {
 			ServiceIdModel model = new ServiceIdModel().create(serviceItem.getId());
 			try {
-				Refund refund = client.getRefundAmount(model.getId(), model.getPassId());
+				Refund refund = client.getRefundAmount(model.getId(), model.getPassId(), model.getAuth());
 				
 				// тариф
 				Tariff tariff = new Tariff();
@@ -348,11 +349,11 @@ public class OrderServiceController extends AbstractOrderService {
 			ServiceIdModel model = new ServiceIdModel().create(serviceItem.getId());
 			try {
 				// получаем заказ и проверяем статус
-				Train booking = client.getBooking(model.getId());
+				Train booking = client.getBooking(model.getId(), model.getAuth());
 				if (booking.getStatus() == RestClient.PAIED_STATUS) {
 					
 					// возвращаем заказ
-					Refund refund = client.refund(model.getId(), model.getPassId());
+					Refund refund = client.refund(model.getId(), model.getPassId(), model.getAuth());
 					if (!refund.isSuccess()) {
 						throw new ResponseError("Can not return service.");
 					}
@@ -380,7 +381,7 @@ public class OrderServiceController extends AbstractOrderService {
 		// отменяем заказы и формируем ответ
 		for (ServiceIdModel idModel : model.getOrders()) {
 			try {
-				String base64 = client.getBase64Ticket(idModel.getId());
+				String base64 = client.getBase64Ticket(idModel.getId(), idModel.getAuth());
 				if (base64 != null) {
 					List<com.gillsoft.model.Document> documents = new ArrayList<>();
 					com.gillsoft.model.Document document = new com.gillsoft.model.Document();

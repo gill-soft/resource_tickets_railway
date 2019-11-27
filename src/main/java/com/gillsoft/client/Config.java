@@ -28,8 +28,16 @@ public class Config {
 		return properties.getProperty("key");
 	}
 	
-	public static String getAuthKey() {
-		return properties.getProperty("auth_key");
+	public static String getSaleName() {
+		return properties.getProperty("sale.name");
+	}
+	
+	public static String getSalePhone() {
+		return properties.getProperty("sale.phone");
+	}
+	
+	public static String getSaleEmailSuffix() {
+		return properties.getProperty("sale.email.suffix");
 	}
 	
 	public static String getShopApiKey() {
