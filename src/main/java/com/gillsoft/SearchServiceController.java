@@ -100,7 +100,7 @@ public class SearchServiceController extends SimpleAbstractTripSearchService<Sim
 							client.getCachedRoute(train.getDepartureCode(), train.getArrivalCode(), train.getDeparture(), train.getNumber());
 						} catch (Exception e) {
 						}
-						Train details = client.getCachedTrain(response.getSession().getId(), train.getNumber());
+						Train details = client.getCachedTrain(train.getDepartureCode(), train.getArrivalCode(), train.getDeparture(), train.getNumber());
 						searchPackage.getSearchResult().putIfAbsent(details.getNumber(), details);
 					}
 				} catch (IOCacheException e) {

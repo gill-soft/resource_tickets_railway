@@ -107,7 +107,6 @@ public class RestClient {
 		Map<String, Object> params = new HashMap<>();
 		params.put(RedisMemoryCache.OBJECT_NAME, RestClient.STATIONS_CACHE_KEY);
 		params.put(RedisMemoryCache.IGNORE_AGE, true);
-		params.put(RedisMemoryCache.UPDATE_DELAY, Config.getCacheStationsUpdateDelay());
 		params.put(RedisMemoryCache.UPDATE_TASK, new StationsUpdateTask());
 		return (List<Station>) cache.read(params);
 	}
@@ -165,20 +164,11 @@ public class RestClient {
 		return getResult(searchTemplate, TRAINS, params);
 	}
 	
-	public Train getCachedTrain(String sessionId, String trainNumber) throws ResponseError, IOCacheException {
+	public Train getCachedTrain(String from, String to, Date date, String trainNumber) throws ResponseError, IOCacheException {
 		Map<String, Object> params = new HashMap<>();
-		params.put(RedisMemoryCache.OBJECT_NAME, getTrainCacheKey(sessionId, trainNumber));
-		params.put(RedisMemoryCache.UPDATE_TASK, new TrainUpdateTask(sessionId, trainNumber));
+		params.put(RedisMemoryCache.OBJECT_NAME, getTrainCacheKey(date, from, to, trainNumber));
+		params.put(RedisMemoryCache.UPDATE_TASK, new TrainUpdateTask(from, to, date, trainNumber));
 		return (Train) checkCache(cache.read(params));
-	}
-	
-	public Train getTrain(String sessionId, String trainNumber) throws ResponseError {
-		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-		params.add("key", Config.getKey());
-		params.add("lang", LANG_RU);
-		params.add("session_id", sessionId);
-		params.add("train_number", trainNumber);
-		return getResult(searchTemplate, TRAIN, params).getTrain();
 	}
 	
 	public Response getTrain(String from, String to, Date date, String trainNumber) throws ResponseError {
@@ -319,8 +309,9 @@ public class RestClient {
 				String.valueOf(DateUtils.truncate(date, Calendar.DATE).getTime()), from, to);
 	}
 	
-	public static String getTrainCacheKey(String sessionId, String trainNumber) {
-		return TRAIN_CACHE_KEY + String.join(";", sessionId, trainNumber);
+	public static String getTrainCacheKey(Date date, String from, String to, String trainNumber) {
+		return TRAIN_CACHE_KEY + String.join(";",
+				String.valueOf(DateUtils.truncate(date, Calendar.DATE).getTime()), from, to, trainNumber);
 	}
 	
 	public static String getRouteCacheKey(Date date, String trainNumber) {

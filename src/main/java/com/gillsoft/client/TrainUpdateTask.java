@@ -1,6 +1,9 @@
 package com.gillsoft.client;
 
+import java.util.Date;
+
 import com.gillsoft.cache.AbstractUpdateTask;
+import com.gillsoft.concurrent.SerializablePoolType;
 import com.gillsoft.model.ResponseError;
 import com.gillsoft.util.ContextProvider;
 
@@ -8,25 +11,33 @@ public class TrainUpdateTask extends AbstractUpdateTask {
 
 	private static final long serialVersionUID = -3353809778569437497L;
 	
-	private String sessionId;
-	private String trainNumber;
+	private static final String POOL_NAME = "RAILWAY_TRAIN_POOL";
+	private static final int POOL_SIZE = 200;
 	
-	public TrainUpdateTask(String sessionId, String trainNumber) {
-		this.sessionId = sessionId;
+	private String from;
+	private String to;
+	private Date date;
+	private String trainNumber;
+	private SerializablePoolType poolType = new SerializablePoolType(POOL_SIZE, POOL_NAME);
+
+	public TrainUpdateTask(String from, String to, Date date, String trainNumber) {
+		this.from = from;
+		this.to = to;
+		this.date = date;
 		this.trainNumber = trainNumber;
 	}
-
+	
 	@Override
 	public void run() {
 		RestClient client = ContextProvider.getBean(RestClient.class);
 		try {
-			Train train = client.getTrain(sessionId, trainNumber);
-			writeObject(client.getCache(), RestClient.getTrainCacheKey(sessionId, trainNumber), train,
-					getTimeToLive(train), Config.getCacheTripUpdateDelay());
+			Train train = client.getTrain(from, to, date, trainNumber).getTrain();
+			writeObject(client.getCache(), RestClient.getTrainCacheKey(date, from, to, trainNumber), train,
+					getTimeToLive(train), TrainsUpdateTask.getHalfPartOfDepartureTime(date), false, false, poolType);
 		} catch (ResponseError e) {
 			// ошибку тоже кладем в кэш
-			writeObject(client.getCache(), RestClient.getTrainCacheKey(sessionId, trainNumber), e,
-					Config.getCacheErrorTimeToLive(), Config.getCacheErrorUpdateDelay());
+			writeObject(client.getCache(), RestClient.getTrainCacheKey(date, from, to, trainNumber), e,
+					Config.getCacheErrorTimeToLive(), 0, false, true, poolType);
 		}
 	}
 	

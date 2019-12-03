@@ -3,17 +3,21 @@ package com.gillsoft.client;
 import java.util.Date;
 
 import com.gillsoft.cache.AbstractUpdateTask;
+import com.gillsoft.concurrent.SerializablePoolType;
 import com.gillsoft.model.ResponseError;
 import com.gillsoft.util.ContextProvider;
 
 public class RouteUpdateTask extends AbstractUpdateTask {
 
 	private static final long serialVersionUID = 5964528266364148528L;
+	private static final String POOL_NAME = "RAILWAY_ROUTE_POOL";
+	private static final int POOL_SIZE = 20;
 	
 	private String from;
 	private String to;
 	private Date date;
 	private String trainNumber;
+	private SerializablePoolType poolType = new SerializablePoolType(POOL_SIZE, POOL_NAME);
 	
 	public RouteUpdateTask(String from, String to, Date date, String trainNumber) {
 		this.from = from;
@@ -28,11 +32,11 @@ public class RouteUpdateTask extends AbstractUpdateTask {
 		try {
 			TrainRoute route = client.getRoute(from, to, date, trainNumber);
 			writeObject(client.getCache(), RestClient.getRouteCacheKey(date, trainNumber), route,
-					getTimeToLive(), Config.getCacheTripUpdateDelay());
+					getTimeToLive(), 0, false, true, poolType);
 		} catch (ResponseError e) {
 			// ошибку тоже кладем в кэш
 			writeObject(client.getCache(), RestClient.getRouteCacheKey(date, trainNumber), e,
-					Config.getCacheErrorTimeToLive(), Config.getCacheErrorUpdateDelay());
+					Config.getCacheErrorTimeToLive(), 0, false, true, poolType);
 		}
 	}
 	
