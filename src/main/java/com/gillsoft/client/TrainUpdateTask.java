@@ -13,12 +13,12 @@ public class TrainUpdateTask extends AbstractUpdateTask {
 	
 	private static final String POOL_NAME = "RAILWAY_TRAIN_POOL";
 	private static final int POOL_SIZE = 200;
+	private static final SerializablePoolType poolType = new SerializablePoolType(POOL_SIZE, POOL_NAME);
 	
 	private String from;
 	private String to;
 	private Date date;
 	private String trainNumber;
-	private SerializablePoolType poolType = new SerializablePoolType(POOL_SIZE, POOL_NAME);
 
 	public TrainUpdateTask(String from, String to, Date date, String trainNumber) {
 		this.from = from;
